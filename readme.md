@@ -1,106 +1,201 @@
-sequenceDiagram
-    participant User as User (Browser)
-    participant React as React Frontend
-    participant API as Spring Boot API
-    participant Service as ToxicityService
-    participant AIProvider as AI Provider Interface
-    participant AI as External AI API<br/>(Cohere/OpenAI/HuggingFace)
-    participant EmailSvc as EmailService
-    participant SMTP as Email Provider<br/>(SMTP/SendGrid)
-    participant DB as PostgreSQL Database
-    participant Scheduler as Background Scheduler
+## ✅ 1. **System Architecture Overview**
 
-    Note over User, Scheduler: User-Triggered Analysis Flow
+### 🔧 **Components & Flow**
 
-    %% User initiates analysis
-    User->>React: Click "Analyze Comments" or "Re-analyze"
-    React->>React: Show loading spinner
-    React->>API: POST /api/toxicity/analyze-batch
-    
-    Note over API: Controller validates request and delegates to service
-    API->>Service: analyzeBatchComments(commentIds)
-    
-    %% Fetch comments from database
-    Service->>DB: SELECT comments WHERE id IN (commentIds)
-    DB-->>Service: Return comment entities
-    
-    %% Process each comment through AI
-    loop For each comment
-        Service->>AIProvider: analyzeContent(comment.text)
-        AIProvider->>AI: HTTP POST with comment text
-        
-        Note over AI: AI model processes text<br/>Returns toxicity probability<br/>and classification details
-        
-        AI-->>AIProvider: {"isToxic": true, "confidence": 0.87, "categories": ["harassment"]}
-        AIProvider-->>Service: AIAnalysisDTO object
-        
-        alt If toxicity detected (confidence > threshold)
-            Service->>DB: UPDATE comments SET is_toxic=true, toxicity_score=0.87
-            Service->>DB: INSERT INTO toxicity_logs (comment_id, ai_provider, score, result)
-            
-            Note over Service: Log the analysis result<br/>for audit trail and model comparison
-            
-            Service->>EmailSvc: sendToxicityAlert(comment, analysisResult)
-            EmailSvc->>DB: SELECT user WHERE id = comment.author_id
-            DB-->>EmailSvc: Return user with email address
-            
-            EmailSvc->>SMTP: Send email alert to comment author
-            SMTP-->>EmailSvc: Email delivery confirmation
-            
-            Note over SMTP: Email contains:<br/>- Comment excerpt<br/>- Toxicity explanation<br/>- Appeal process info<br/>- Community guidelines link
-            
-        else If comment is clean
-            Service->>DB: UPDATE comments SET is_toxic=false, toxicity_score=0.12
-            Service->>DB: INSERT INTO toxicity_logs (comment_id, ai_provider, score, result)
-        end
-    end
-    
-    %% Return results to frontend
-    Service-->>API: Return analysis summary (total processed, toxic found, etc.)
-    API-->>React: HTTP 200 with ToxicityReportDTO
-    
-    React->>React: Hide loading spinner
-    React->>React: Update comment list with toxicity flags
-    React->>React: Show success notification with stats
-    
-    User->>React: View updated comments with toxic highlights
-    
-    Note over User, Scheduler: Background Scheduled Analysis Flow
-    
-    %% Scheduled analysis runs automatically
-    Scheduler->>Service: scheduledAnalysis() - runs every 30 minutes
-    Service->>DB: SELECT comments WHERE analyzed_at IS NULL OR analyzed_at < NOW() - INTERVAL '24 hours'
-    DB-->>Service: Return unanalyzed or stale comments
-    
-    Note over Service: Same AI analysis process<br/>as user-triggered flow<br/>but runs automatically
-    
-    Service->>AIProvider: Batch analyze new comments
-    AIProvider->>AI: Multiple API calls for efficiency
-    AI-->>AIProvider: Batch analysis results
-    
-    Service->>DB: Bulk update comments with results
-    Service->>EmailSvc: Send alerts for newly detected toxic content
-    EmailSvc->>SMTP: Send email notifications
-    
-    Note over User, Scheduler: Real-time Dashboard Updates
-    
-    User->>React: Navigate to Analytics Dashboard
-    React->>API: GET /api/reports/toxicity-stats
-    API->>DB: Complex query for aggregated statistics
-    DB-->>API: Return statistics (toxic %, trends, user patterns)
-    API-->>React: ToxicityReportDTO with charts data
-    React->>React: Render charts and statistics
-    
-    Note over User, React: User can see:<br/>- Total comments analyzed<br/>- Toxicity percentage by day<br/>- Most problematic users<br/>- AI model accuracy metrics<br/>- Recent email alerts sent
-    
-    %% Appeal process flow
-    User->>React: Click "Appeal False Positive" on comment
-    React->>API: POST /api/comments/{id}/appeal
-    API->>Service: processAppeal(commentId, userReason)
-    Service->>DB: INSERT INTO appeals table
-    Service->>EmailSvc: notifyModerators(appealDetails)
-    EmailSvc->>SMTP: Send email to moderators
-    API-->>React: Appeal submitted confirmation
-    React->>React: Show appeal status on comment
-    
-    Note over User, Scheduler: This comprehensive flow ensures:<br/>1. Real-time user-triggered analysis<br/>2. Automated background processing<br/>3. Immediate email notifications<br/>4. Audit trail for all decisions<br/>5. Appeal mechanism for false positives<br/>6. Rich dashboard analytics
+```
+[ Social Media API / Data Source ]
+            |
+            v
+   [Comment Ingestion Service]
+            |
+            v
+   [PostgreSQL Database] <-----> [Toxicity Detection Service]
+            |
+            v
+   [Analysis & Reporting Service]
+            |
+            v
+     [REST API / Admin Panel]
+```
+
+### 📌 **Component Responsibilities**
+
+| Component                | Responsibility                                                                               |
+| ------------------------ | -------------------------------------------------------------------------------------------- |
+| **Comment Ingestion**    | Store raw comments into PostgreSQL with metadata (user, post, platform, timestamp).          |
+| **Toxicity Detection**   | Fetch unprocessed comments → send to Hugging Face → store results (toxic/targeted user etc). |
+| **Analysis & Reporting** | Aggregate bully behavior: who bullied whom, where, when.                                     |
+| **Scheduler / Worker**   | Batch or scheduled background jobs for analysis (preferred over real-time for Hugging Face). |
+| **REST API**             | Admin endpoints for reports, stats, and user-wise filtering.                                 |
+
+---
+
+## ✅ 2. **Normalized Database Schema**
+
+### 📊 ER Diagram (Text-Based)
+
+```sql
+User (user_id PK)
+Post (post_id PK, platform, user_id FK)
+Comment (comment_id PK, post_id FK, commenter_id FK, content, timestamp)
+Analysis (analysis_id PK, comment_id FK, is_toxic, label, confidence, detected_at)
+Target (target_id PK, analysis_id FK, target_user_id FK)
+```
+
+### 🧩 Table Structures
+
+#### `user`
+
+| Field         | Type    |
+| ------------- | ------- |
+| user\_id (PK) | UUID    |
+| username      | VARCHAR |
+| email         | VARCHAR |
+| platform      | VARCHAR |
+
+#### `post`
+
+| Field         | Type      |
+| ------------- | --------- |
+| post\_id (PK) | UUID      |
+| platform      | VARCHAR   |
+| user\_id (FK) | UUID      |
+| created\_at   | TIMESTAMP |
+
+#### `comment`
+
+| Field              | Type      |
+| ------------------ | --------- |
+| comment\_id (PK)   | UUID      |
+| post\_id (FK)      | UUID      |
+| commenter\_id (FK) | UUID      |
+| content            | TEXT      |
+| timestamp          | TIMESTAMP |
+
+#### `analysis`
+
+| Field             | Type      |                                     |
+| ----------------- | --------- | ----------------------------------- |
+| analysis\_id (PK) | UUID      |                                     |
+| comment\_id (FK)  | UUID      |                                     |
+| is\_toxic         | BOOLEAN   |                                     |
+| label             | VARCHAR   | (`toxic`, `insult`, `threat`, etc.) |
+| confidence        | FLOAT     |                                     |
+| detected\_at      | TIMESTAMP |                                     |
+
+#### `target` (who is being bullied — optional but useful)
+
+| Field                | Type |
+| -------------------- | ---- |
+| target\_id (PK)      | UUID |
+| analysis\_id (FK)    | UUID |
+| target\_user\_id(FK) | UUID |
+
+---
+
+## ✅ 3. **Optional Tables**
+
+### `bully_reports`
+
+Precomputed reports for quick access.
+
+| Field            | Type      |
+| ---------------- | --------- |
+| report\_id       | UUID      |
+| bully\_user\_id  | UUID      |
+| victim\_user\_id | UUID      |
+| platform         | VARCHAR   |
+| post\_id         | UUID      |
+| comment\_id      | UUID      |
+| label            | VARCHAR   |
+| created\_at      | TIMESTAMP |
+
+> These are useful for audit logs and quick visualization in the frontend.
+
+---
+
+## ✅ 4. **Backend Folder Structure**
+
+```bash
+src/main/java/com/yourname/cyberbullydetection/
+├── controller/
+│   └── ReportController.java
+├── dto/
+│   └── AnalysisRequestDTO.java
+├── model/
+│   ├── User.java
+│   ├── Post.java
+│   ├── Comment.java
+│   ├── Analysis.java
+│   └── Target.java
+├── repository/
+│   ├── UserRepository.java
+│   ├── PostRepository.java
+│   ├── CommentRepository.java
+│   ├── AnalysisRepository.java
+│   └── TargetRepository.java
+├── service/
+│   ├── CommentIngestionService.java
+│   ├── ToxicityDetectionService.java
+│   ├── ReportingService.java
+│   └── HuggingFaceClient.java
+├── scheduler/
+│   └── CommentAnalysisScheduler.java
+└── CyberBullyDetectionApplication.java
+```
+
+> 💡 **Modular, service-driven design** ensures ease of testing, deployment, and scaling.
+
+---
+
+## ✅ 5. **Real-time vs Background Job**
+
+| Strategy                         | Use When                                                                                             |
+| -------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| ✅ **Background Job (Scheduled)** | Batch analyze new/unprocessed comments (e.g. every 5 mins).                                          |
+| ⚠️ Real-time API calls           | Only for live moderation (comment before post). Not ideal with Hugging Face latency and rate limits. |
+
+> **Use a Spring `@Scheduled` task** to batch-pull unprocessed comments and call Hugging Face’s API.
+
+---
+
+## ✅ 6. **Avoiding Duplicate Processing / False Positives**
+
+* ✅ In `analysis` table, use a **UNIQUE constraint on `comment_id`**.
+* ✅ Maintain a `status` field in comments (`PENDING`, `PROCESSED`, `ERROR`) to prevent reprocessing.
+* ✅ Apply **threshold-based confidence filtering** (`confidence > 0.7`) to reduce false positives.
+* ✅ Optionally implement a **feedback loop** or admin override for correction.
+
+---
+
+## ✅ 7. **Performance, Scaling & Developer Experience Tips**
+
+### ⚙️ Performance & Scaling
+
+* ✅ Use **connection pooling** (e.g., HikariCP).
+* ✅ Paginate queries when analyzing large comment sets.
+* ✅ Cache user and post data if accessed frequently.
+* ✅ Deploy on **Render + PostgreSQL (ElephantSQL or Supabase)** for smooth DevOps.
+
+### 🛠 Developer Experience
+
+* Use **Lombok** to reduce boilerplate.
+* Define **DTOs** for clean controller-service separation.
+* Add **OpenAPI/Swagger** for API documentation.
+* Use **Spring Profiles** for dev/test/prod environments.
+
+---
+
+## ✅ Sample Workflow (Simplified)
+
+1. Comment is added to `comment` table via ingestion service or API.
+2. Scheduler runs every 5 minutes:
+
+   * Finds unprocessed comments
+   * Sends content to Hugging Face `toxic-bert`
+   * Stores result in `analysis` and `target` tables
+3. ReportController provides:
+
+   * `/api/reports/bully-summary`
+   * `/api/reports/user/{id}`
+   * `/api/reports/platform/{platform}`
