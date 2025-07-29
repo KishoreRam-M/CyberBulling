@@ -25,7 +25,9 @@ public class CustomUserDetailsImpl implements UserDetailsService {
             throw new UsernameNotFoundException("User not found with email: " + username);
         }
 
-        List<GrantedAuthority> authorities = new ArrayList<>(); // Add roles here if needed
+        // Add ROLE-based authority
+        List<GrantedAuthority> authorities = new ArrayList<>();
+        authorities.add(() -> user.getRole()); // e.g., ROLE_USER, ROLE_ADMIN
 
         return new org.springframework.security.core.userdetails.User(
                 user.getEmail(),

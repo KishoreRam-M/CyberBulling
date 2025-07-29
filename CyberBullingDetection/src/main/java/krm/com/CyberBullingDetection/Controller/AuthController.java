@@ -16,8 +16,6 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Optional;
-
 @RestController
 @RequestMapping("api/auth")
 public class AuthController {
@@ -37,19 +35,17 @@ public class AuthController {
             String email = user.getEmail();
             User existingUser = userRepo.findByEmail(email);
 
-
-
             if (existingUser != null) {
-                System.out.println("User exists");
-            } else {
-                System.out.println("User does not exist");
+                return ResponseEntity.badRequest().body("User already exists with email: " + email);
             }
-
 
             User myUser = new User();
             myUser.setEmail(email);
             myUser.setName(user.getName());
-            myUser.setPassword(passwordEncoder.encode(user.getPassword())); // encode password
+            myUser.setPassword(passwordEncoder.encode(user.getPassword()));
+
+            // Default role is USER unless specified otherwise
+            myUser.setRole(user.getRole() != null ? user.getRole() : "ROLE_USER");
 
             User savedUser = userRepo.save(myUser);
 
@@ -61,13 +57,13 @@ public class AuthController {
 
             return ResponseEntity.ok(authResponse);
         } catch (Exception e) {
-            e.printStackTrace(); // For debugging in console
+            e.printStackTrace();
             return ResponseEntity.badRequest().body("Signup failed: " + e.getMessage());
         }
     }
 
-    private Authentication authenticate(String name, String password) {
-        UserDetails userDetails = customUserDetails.loadUserByUsername(name);
+    private Authentication authenticate(String email, String password) {
+        UserDetails userDetails = customUserDetails.loadUserByUsername(email);
 
         if (userDetails == null) {
             throw new BadCredentialsException("User not found");
@@ -83,10 +79,10 @@ public class AuthController {
     @PostMapping("/signin")
     public ResponseEntity<?> signIn(@RequestBody LoginRequest loginRequest) {
         try {
-            String username = loginRequest.getEmail();
+            String email = loginRequest.getEmail();
             String password = loginRequest.getPassword();
 
-            Authentication authentication = authenticate(username, password);
+            Authentication authentication = authenticate(email, password);
             SecurityContextHolder.getContext().setAuthentication(authentication);
 
             String jwt = JwtProvider.generateToken(authentication);
@@ -96,7 +92,7 @@ public class AuthController {
         } catch (BadCredentialsException ex) {
             return ResponseEntity.status(401).body("Signin failed: " + ex.getMessage());
         } catch (Exception ex) {
-            ex.printStackTrace(); // Debugging
+            ex.printStackTrace();
             return ResponseEntity.status(500).body("Internal error during signin: " + ex.getMessage());
         }
     }

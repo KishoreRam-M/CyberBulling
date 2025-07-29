@@ -26,8 +26,18 @@ public class AppConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authority -> authority
-                        .requestMatchers("/api/auth/**").permitAll() // ✅ Corrected path
-                        .requestMatchers("/api/**").authenticated()  // ✅ Secured path
+
+                        // 🔓 Public endpoints (auth/register/login)
+                        .requestMatchers("/api/auth/**").permitAll()
+
+                        // 🔐 Role-based protected endpoints
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")  // ROLE_ADMIN
+                        .requestMatchers("/api/user/**").hasRole("USER")    // ROLE_USER
+
+                        // 🔒 All authenticated users
+                        .requestMatchers("/api/**").authenticated()
+
+                        // 🌐 Anything else is public
                         .anyRequest().permitAll()
                 )
                 .addFilterBefore(new JwtTokenValidator(), BasicAuthenticationFilter.class)
@@ -40,11 +50,11 @@ public class AppConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         return request -> {
             CorsConfiguration configuration = new CorsConfiguration();
-            configuration.setAllowedOrigins(Arrays.asList("http://localhost:5173", "*")); // For frontend & Postman
+            configuration.setAllowedOrigins(Arrays.asList("http://localhost:5173", "*")); // Frontend or Postman
             configuration.setAllowCredentials(true);
             configuration.setAllowedMethods(Collections.singletonList("*"));
             configuration.setAllowedHeaders(Collections.singletonList("*"));
-            configuration.setExposedHeaders(Arrays.asList("Authorization"));
+            configuration.setExposedHeaders(Collections.singletonList("Authorization"));
             configuration.setMaxAge(3600L);
             return configuration;
         };
