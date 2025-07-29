@@ -19,39 +19,34 @@ import java.util.Collections;
 @Configuration
 @EnableWebSecurity
 public class AppConfig {
+
     @Bean
-    public SecurityFilterChain securityFilterChain(
-            HttpSecurity httpSecurity
-    ) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
         httpSecurity
-                .csrf(csrf->csrf.disable())
-                .sessionManagement(session->session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(authority->authority
-                        .requestMatchers("api/**").authenticated()
-                        .requestMatchers("api/auth/**").permitAll()
-                        .anyRequest().authenticated()
+                .csrf(csrf -> csrf.disable())
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(authority -> authority
+                        .requestMatchers("/api/auth/**").permitAll() // ✅ Corrected path
+                        .requestMatchers("/api/**").authenticated()  // ✅ Secured path
+                        .anyRequest().permitAll()
                 )
                 .addFilterBefore(new JwtTokenValidator(), BasicAuthenticationFilter.class)
-                .cors(cors->cors.configurationSource(coresConfigurationSource()));
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()));
 
-
-               return httpSecurity.build();
-
+        return httpSecurity.build();
     }
+
     @Bean
-    public  CorsConfigurationSource coresConfigurationSource() {
-        return new CorsConfigurationSource() {
-            @Override
-            public CorsConfiguration getCorsConfiguration(HttpServletRequest request) {
-                CorsConfiguration configuration = new CorsConfiguration();
-                configuration.setAllowedOrigins(Arrays.asList("http://localhost:5173")); // no trailing slash
-                configuration.setAllowCredentials(true);
-                configuration.setAllowedMethods(Collections.singletonList("*"));
-                configuration.setAllowedHeaders(Collections.singletonList("*"));
-                configuration.setMaxAge(3600L);
-                configuration.setExposedHeaders(Arrays.asList("Authorization"));
-                return configuration;
-            }
+    public CorsConfigurationSource corsConfigurationSource() {
+        return request -> {
+            CorsConfiguration configuration = new CorsConfiguration();
+            configuration.setAllowedOrigins(Arrays.asList("http://localhost:5173", "*")); // For frontend & Postman
+            configuration.setAllowCredentials(true);
+            configuration.setAllowedMethods(Collections.singletonList("*"));
+            configuration.setAllowedHeaders(Collections.singletonList("*"));
+            configuration.setExposedHeaders(Arrays.asList("Authorization"));
+            configuration.setMaxAge(3600L);
+            return configuration;
         };
     }
 

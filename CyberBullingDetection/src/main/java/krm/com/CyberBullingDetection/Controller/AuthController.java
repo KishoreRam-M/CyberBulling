@@ -14,67 +14,90 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Optional;
 
 @RestController
 @RequestMapping("api/auth")
 public class AuthController {
+
     @Autowired
     UserRepo userRepo;
+
     @Autowired
     private PasswordEncoder passwordEncoder;
 
     @Autowired
     private CustomUserDetailsImpl customUserDetails;
+
     @PostMapping("/signup")
+    public ResponseEntity<?> signUp(@RequestBody User user) {
+        try {
+            String email = user.getEmail();
+            User existingUser = userRepo.findByEmail(email);
 
-    public ResponseEntity<AuthResponse> signUp(@RequestBody User user) throws Exception { String  email = user.getEmail();
-        if(email !=null)
-        {
-            throw new Exception("Email already exists with another account");
 
+
+            if (existingUser != null) {
+                System.out.println("User exists");
+            } else {
+                System.out.println("User does not exist");
+            }
+
+
+            User myUser = new User();
+            myUser.setEmail(email);
+            myUser.setName(user.getName());
+            myUser.setPassword(passwordEncoder.encode(user.getPassword())); // encode password
+
+            User savedUser = userRepo.save(myUser);
+
+            Authentication authentication = authenticate(email, user.getPassword());
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+
+            String token = JwtProvider.generateToken(authentication);
+            AuthResponse authResponse = new AuthResponse(token, "Signup successful");
+
+            return ResponseEntity.ok(authResponse);
+        } catch (Exception e) {
+            e.printStackTrace(); // For debugging in console
+            return ResponseEntity.badRequest().body("Signup failed: " + e.getMessage());
         }
-        User myuser = new User();
-        myuser.setEmail(email);
-        myuser.setName(user.getName());
-        myuser.setPassword(user.getPassword());
-       User savedUser= userRepo.save(myuser);
-        Authentication authentication=authenticate(user.getEmail(),user.getPassword());
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-        String token = JwtProvider.generateToken(authentication);
-        AuthResponse authResponse = new AuthResponse(token
-                , "Signup successful");
-
-        return ResponseEntity.ok(authResponse);
-    }
-private  Authentication authenticate (String name,String password)
-{
-    UserDetails userDetails = customUserDetails.loadUserByUsername(name);
-
-    if (userDetails == null) {
-        throw new BadCredentialsException("User not found");
     }
 
-    if (!passwordEncoder.matches(password, userDetails.getPassword())) {
-        throw new BadCredentialsException("Invalid password");
-    }
-    return new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+    private Authentication authenticate(String name, String password) {
+        UserDetails userDetails = customUserDetails.loadUserByUsername(name);
 
-}
+        if (userDetails == null) {
+            throw new BadCredentialsException("User not found");
+        }
+
+        if (!passwordEncoder.matches(password, userDetails.getPassword())) {
+            throw new BadCredentialsException("Invalid password");
+        }
+
+        return new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+    }
+
     @PostMapping("/signin")
-    public ResponseEntity<AuthResponse> signIn(@RequestBody LoginRequest loginRequest) {
-        String username = loginRequest.getEmail();
-        String password = loginRequest.getPassword();
+    public ResponseEntity<?> signIn(@RequestBody LoginRequest loginRequest) {
+        try {
+            String username = loginRequest.getEmail();
+            String password = loginRequest.getPassword();
 
-        Authentication authentication = authenticate(username, password);
-        SecurityContextHolder.getContext().setAuthentication(authentication);
+            Authentication authentication = authenticate(username, password);
+            SecurityContextHolder.getContext().setAuthentication(authentication);
 
-        String jwt = JwtProvider.generateToken(authentication);
-        AuthResponse authResponse = new AuthResponse(jwt, "Signin successful");
+            String jwt = JwtProvider.generateToken(authentication);
+            AuthResponse authResponse = new AuthResponse(jwt, "Signin successful");
 
-        return ResponseEntity.ok(authResponse);
+            return ResponseEntity.ok(authResponse);
+        } catch (BadCredentialsException ex) {
+            return ResponseEntity.status(401).body("Signin failed: " + ex.getMessage());
+        } catch (Exception ex) {
+            ex.printStackTrace(); // Debugging
+            return ResponseEntity.status(500).body("Internal error during signin: " + ex.getMessage());
+        }
     }
 }
