@@ -23,7 +23,7 @@ public class AnalyserController {
                 return ResponseEntity.badRequest().body("Comment content must not be null or empty.");
             }
 
-            Map<String, Double> result = apiService.analyzeComment(comment.getContent());
+            Map<String, Double> result = apiService.analyzeComment(comment.getContent(),comment.getAuthor(),comment.getTarget());
             return ResponseEntity.ok(result);
 
         } catch (Exception e) {

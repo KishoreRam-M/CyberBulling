@@ -16,10 +16,12 @@ public class BullyReport {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
+    // Mandatory reference to the user who is bullying
+    @ManyToOne(optional = false)
     @JoinColumn(name = "bully_id", nullable = false)
     private User bully;
 
+    // Optional victim
     @ManyToOne
     @JoinColumn(name = "victim_id")
     private User victim;
@@ -32,9 +34,9 @@ public class BullyReport {
 
     private double score;
 
+    // Default timestamp assigned only if not set
     @Column(nullable = false)
-    private LocalDateTime timestamp = LocalDateTime.now();
-
+    private LocalDateTime timestamp;
 
     @Column(name = "severe_toxicity_score")
     private Double severeToxicityScore;
@@ -53,4 +55,16 @@ public class BullyReport {
 
     @Column(name = "identity_attack_score")
     private Double identityAttackScore;
+
+    // Bidirectional OneToOne relationship with Comment
+    @OneToOne(optional = false)
+    @JoinColumn(name = "comment_id", nullable = false, unique = true)
+    private Comment comment;
+
+    @PrePersist
+    public void prePersist() {
+        if (timestamp == null) {
+            timestamp = LocalDateTime.now();
+        }
+    }
 }

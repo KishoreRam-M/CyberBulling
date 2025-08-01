@@ -9,7 +9,10 @@ import java.time.LocalDateTime;
         @Index(columnList = "isToxic"),
         @Index(columnList = "toxicityLabel")
 })
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 public class Comment {
 
     @Id
@@ -34,5 +37,16 @@ public class Comment {
 
     private double toxicityScore;
 
-    private LocalDateTime analyzedDate = LocalDateTime.now();
+    private LocalDateTime analyzedDate;
+
+    // Reverse mapping to BullyReport (owning side is in BullyReport)
+    @OneToOne(mappedBy = "comment", cascade = CascadeType.ALL, orphanRemoval = true)
+    private BullyReport bullyReport;
+
+    @PrePersist
+    public void prePersist() {
+        if (analyzedDate == null) {
+            analyzedDate = LocalDateTime.now();
+        }
+    }
 }
