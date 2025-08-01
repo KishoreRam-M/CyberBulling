@@ -10,6 +10,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 
@@ -45,12 +46,16 @@ public class AppConfig {
 
         return httpSecurity.build();
     }
+    @Bean
+    public RestTemplate restTemplate() {
+        return new RestTemplate();
+    }
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         return request -> {
             CorsConfiguration configuration = new CorsConfiguration();
-            configuration.setAllowedOrigins(Arrays.asList("http://localhost:5173", "*")); // Frontend or Postman
+            configuration.setAllowedOrigins(Collections.singletonList("http://localhost:5173"));
             configuration.setAllowCredentials(true);
             configuration.setAllowedMethods(Collections.singletonList("*"));
             configuration.setAllowedHeaders(Collections.singletonList("*"));
