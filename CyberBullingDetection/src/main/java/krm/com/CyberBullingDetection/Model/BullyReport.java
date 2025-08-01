@@ -25,14 +25,11 @@ public class BullyReport {
     private User victim;
 
     @Lob
-    @Column(nullable = false)
     private String reason;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
     private ToxicityLabel label;
 
-    @Column(nullable = false)
     private double score;
 
     @Column(nullable = false)
