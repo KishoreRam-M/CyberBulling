@@ -47,6 +47,7 @@ public class ReportController {
         }
     }
 
+    // THIS IS THE CORRECTED METHOD
     @PostMapping("/submit")
     public ResponseEntity<?> createReportFromComment(@RequestBody Comment comment) {
         try {
@@ -54,14 +55,15 @@ public class ReportController {
                 return ResponseEntity.badRequest().body("Missing required comment fields: author, target, content.");
             }
 
-            BullyReport bullyReport = new BullyReport();
-            bullyReport.setBully(comment.getAuthor());
-            bullyReport.setVictim(comment.getTarget());
-            bullyReport.setReason(comment.getContent());
-            bullyReport.setTimestamp(LocalDateTime.now());
+            // You must call your service method to handle the complex logic.
+            // Your service knows to save the Comment first, then the Report.
+            apiService.analyzeComment(comment);
 
-            BullyReport savedReport = reportRepo.save(bullyReport);
-            return ResponseEntity.status(HttpStatus.CREATED).body(savedReport);
+            // Your service method returns a Map, so we can't directly return a BullyReport.
+            // You might need to change your service to return the saved BullyReport instead of a Map
+            // But for now, we'll just return a success message.
+            return ResponseEntity.status(HttpStatus.CREATED).body("Report creation process started successfully.");
+
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
