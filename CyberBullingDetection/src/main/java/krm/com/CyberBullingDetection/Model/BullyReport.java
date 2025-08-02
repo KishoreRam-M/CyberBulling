@@ -1,7 +1,9 @@
 package krm.com.CyberBullingDetection.Model;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.*;
+
 import java.time.LocalDateTime;
 
 @Entity
@@ -16,12 +18,10 @@ public class BullyReport {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Mandatory reference to the user who is bullying
     @ManyToOne(optional = false)
     @JoinColumn(name = "bully_id", nullable = false)
     private User bully;
 
-    // Optional victim
     @ManyToOne
     @JoinColumn(name = "victim_id")
     private User victim;
@@ -34,7 +34,6 @@ public class BullyReport {
 
     private double score;
 
-    // Default timestamp assigned only if not set
     @Column(nullable = false)
     private LocalDateTime timestamp;
 
@@ -56,10 +55,12 @@ public class BullyReport {
     @Column(name = "identity_attack_score")
     private Double identityAttackScore;
 
-    // Bidirectional OneToOne relationship with Comment
     @OneToOne(optional = false)
-    @JoinColumn(name = "comment_id", nullable = false, unique = true)
+    @JoinColumn(name = "comment_id", nullable = false)
     private Comment comment;
+
+
+
 
     @PrePersist
     public void prePersist() {

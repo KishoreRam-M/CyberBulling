@@ -1,7 +1,9 @@
 package krm.com.CyberBullingDetection.Model;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
+
 import java.time.LocalDateTime;
 
 @Entity
@@ -39,9 +41,9 @@ public class Comment {
 
     private LocalDateTime analyzedDate;
 
-    // Reverse mapping to BullyReport (owning side is in BullyReport)
-    @OneToOne(mappedBy = "comment", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToOne(mappedBy = "comment", cascade = CascadeType.ALL)
     private BullyReport bullyReport;
+
 
     @PrePersist
     public void prePersist() {
