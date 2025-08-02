@@ -1,6 +1,7 @@
 package krm.com.CyberBullingDetection.Model;
 
 import com.fasterxml.jackson.annotation.JsonManagedReference;
+import com.fasterxml.jackson.annotation.JsonBackReference; // Add this import
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -26,10 +27,12 @@ public class Comment {
 
     @ManyToOne
     @JoinColumn(name = "author_id")
+    @JsonBackReference // <-- FIX: This breaks the loop for the author relationship
     private User author;
 
     @ManyToOne
     @JoinColumn(name = "target_id")
+    @JsonBackReference // <-- FIX: This breaks the loop for the target relationship
     private User target;
 
     private boolean isToxic;
@@ -42,6 +45,7 @@ public class Comment {
     private LocalDateTime analyzedDate;
 
     @OneToOne(mappedBy = "comment", cascade = CascadeType.ALL)
+    @JsonManagedReference // This is correct, as the comment is the "owner" of the relationship
     private BullyReport bullyReport;
 
 

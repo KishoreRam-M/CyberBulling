@@ -20,10 +20,12 @@ public class BullyReport {
 
     @ManyToOne(optional = false)
     @JoinColumn(name = "bully_id", nullable = false)
+    @JsonBackReference // <-- FIX: This breaks the loop for the bully relationship
     private User bully;
 
     @ManyToOne
     @JoinColumn(name = "victim_id")
+    @JsonBackReference // <-- FIX: This breaks the loop for the victim relationship
     private User victim;
 
     @Lob
@@ -57,6 +59,7 @@ public class BullyReport {
 
     @OneToOne(optional = false)
     @JoinColumn(name = "comment_id", nullable = false)
+    @JsonBackReference // <-- FIX: This breaks the loop for the comment relationship
     private Comment comment;
 
 
