@@ -32,7 +32,7 @@ public class PerspectiveAPIService {
 
 
     @Transactional
-    public Map<String, Double> analyzeComment(Comment com) throws Exception {
+    public BullyReport  analyzeComment(Comment com) throws Exception {
         // Validate input
         if (com == null || com.getContent() == null || com.getAuthor() == null) {
             throw new IllegalArgumentException("Invalid comment data provided");
@@ -101,6 +101,8 @@ public class PerspectiveAPIService {
         bullyReport.setBully(author);
         bullyReport.setVictim(target);
         bullyReport.setTimestamp(LocalDateTime.now());
+        bullyReport.setReason(comment.getContent());
+
 
         bullyReport.setObsceneScore(obsceneScore);
         bullyReport.setToxicityScore(toxicityScore);
@@ -120,7 +122,7 @@ public class PerspectiveAPIService {
         commentRepo.save(savedComment); // Safe final update
 
 
-        return result;
+        return bullyReport;
     }
 
     private ToxicityLabel determineToxicityLabel(double score) {

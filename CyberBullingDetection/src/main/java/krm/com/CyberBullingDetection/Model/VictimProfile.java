@@ -7,6 +7,7 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "victim_profiles")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor
+@Data
 public class VictimProfile {
 
     @Id

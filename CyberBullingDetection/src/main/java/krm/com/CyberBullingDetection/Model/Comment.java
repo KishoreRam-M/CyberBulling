@@ -16,6 +16,7 @@ import java.time.LocalDateTime;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Data
 public class Comment {
 
     @Id
@@ -32,7 +33,7 @@ public class Comment {
 
     @ManyToOne
     @JoinColumn(name = "target_id")
-    @JsonBackReference // <-- FIX: This breaks the loop for the target relationship
+    @JsonBackReference
     private User target;
 
     private boolean isToxic;
@@ -45,7 +46,7 @@ public class Comment {
     private LocalDateTime analyzedDate;
 
     @OneToOne(mappedBy = "comment", cascade = CascadeType.ALL)
-    @JsonManagedReference // This is correct, as the comment is the "owner" of the relationship
+    @JsonManagedReference
     private BullyReport bullyReport;
 
 

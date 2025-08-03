@@ -35,12 +35,11 @@ public class JwtProvider {
                 .addClaims(claims)
                 .setSubject(authentication.getName())
                 .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + 86400000)) // 1 day expiry
+                .setExpiration(new Date(System.currentTimeMillis() + 86400000))
                 .signWith(SECRET_KEY)
                 .compact();
     }
 
-    // ✅ Extract email from JWT
     public static String emailFromToken(String jwt) {
         String token = jwt.substring(7); // Remove "Bearer "
         Claims claims = Jwts.parserBuilder()
